@@ -219,6 +219,12 @@ def removeRNOT(symbol): # Removes Redundant NOT symbols
     else:
         return condensed[-1]
 
+def removeRNOTlist(List):
+    notList = []
+    for i in range(0,len(List)):
+        notList.append(removeRNOT(List[i]))
+    return notList
+
 def simplifyKB(KB):
     simpleKB = []
     for i in KB:
@@ -247,4 +253,6 @@ testList2 = ['bu','NOT fo']
 
 
 for i in simpleKB:
-    print(negateList(i))
+    x = negateList(i)
+    y = removeRNOTlist(x)
+    print(x, '-----------',y)
