@@ -1,6 +1,6 @@
 fo IF to,bu,ju
 fo IF eg
-co
-te
+co IF milk,sugar
+te IF milk,sugar
 to
 bu
