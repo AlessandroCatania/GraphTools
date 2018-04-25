@@ -90,6 +90,13 @@ def readPaths(filename):
                 Paths.append(line.replace("\n", ""))
     return Paths
 
+def extract_coordinates():
+    street_info = initialize_street_information()
+    coordinate_set = set()
+    for i in street_info:
+        coordinate_set.add(i.start)
+        coordinate_set.add(i.end)
+    return coordinate_set
 
 KB = readPaths('KB2.txt')
 print(KB)
