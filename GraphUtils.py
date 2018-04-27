@@ -1,7 +1,10 @@
 from collections import *
 from namedlist import namedlist
+
 from copy import deepcopy
 import  itertools
+import itertools
+
 
 Street = namedtuple('Street', 'StreetName start end')
 Coordinate = namedtuple('Coordinate', 'x y')
@@ -63,6 +66,13 @@ def initialize_street_information():
                 	end=Coordinate(x=int(entry[3]), y=int(entry[4]))))
     return street_info
 
+def extract_coordinates():
+	street_info = initialize_street_information()
+	coordinate_set = set()
+	for i in street_info:
+		coordinate_set.add(i.start)
+		coordinate_set.add(i.end)
+	return coordinate_set
 
 def print_directions(explored, end):
     street_info = initialize_street_information()
@@ -209,16 +219,112 @@ testList2 = ['bu','NOT fo']
 #commons = set(testList1).intersection(testList2)
 #print(negateList([testList1]))
 
-negKB = negateKB(deepcopy(simpleKB))
+# negKB = negateKB(deepcopy(simpleKB))
+# print(negKB)
+
+def resolvePair(Ci,Cj):
+    Ci_new = Ci
+    Cj_new = Cj
+    resolvedClause = []
+    negatedCj = removeRNOTlist(negateList(Cj))
+    resolvedElements = set(Ci).intersection(negatedCj)
+    for i in resolvedElements:
+        Ci_new.remove(i)
+        j = removeRNOT('NOT ' + i)
+        Cj_new.remove(j)
+    if len(resolvedElements) > 0:
+        resolvedClause.extend(Ci_new)
+        resolvedClause.extend(Cj_new)
+    else:
+        return False
+    return list(set(resolvedClause)) # Removing duplicates
 
 
 # Preliminary Code for Resolution Algorithm - Finding the common pairwise elements using intersection
 # Note that some sets are the same but inverted : Comparing set 2 and 5 is like comparing set 5 and 2 - room for optimization in that regard
 # For resolution: we want to choose the set which contains the highest number of elements and then remove those two items from our original KB list
-for i in range(0,len(simpleKB)):
-    x = []
-    for j in range(0,len(simpleKB)):
-        if i != j:
-            x.append(set(simpleKB[i]).intersection(simpleKB[j]))
 
-    print('Set Number ',i, ': ',x)
+
+RULES = simpleKB
+toProve = ['NOT R']
+RULES.append(toProve)
+
+def Resolution(rules):
+    newClauses = []
+    for i in range(0,len(rules)):
+        for j in range(0,len(rules)):
+            if i < j:
+                Clause1 = deepcopy(rules[i])
+                Clause2 = deepcopy(rules[j])
+                resolved = resolvePair(Clause1,Clause2)
+                if resolved != False and resolved not in newClauses:
+                    newClauses.append(resolved)
+    return newClauses
+
+
+def matchNegThesis(clause,goal):
+    return len(goal)-len(set(clause).intersection(goal))
+
+def clauseCost(resolvedClauses,thesis):
+    costList = []
+    neg_thesis = removeRNOTlist(negateList(thesis))
+    for i in resolvedClauses:
+        score = matchNegThesis(i,neg_thesis)
+        costList.append(score)
+    return costList
+
+def goalTest(testList):
+    for i in testList:
+        if i == []:
+            return True
+    return False
+
+
+# def GraphSearch3(initialState, goalState):
+#     frontier = [] # Will contain the nodes in the frontier
+#     frontierSet = [] # Will contain the current state in the frontier
+#     initNode = Node(Parent=initialState, State=initialState, stepCost=0) # Initial State - Points to itself - Parent is itself
+#     frontier.append(Frontier(nodeObj=initNode, cost=0)) # This frontier holds a list of nodes
+#     frontierSet.append(initialState) # This is the same as the frontier but just holds a list of states (makes it easier in IF statements to compare states and not nodes)
+#     exploredSet =[] # Will contain a list of visited states (makes it easier in IF statements to compare states and not nodes)
+#     pathTrail = []  # Contains a list of visited NODES (used to retrieve the solution path)
+#     everyNode = [] # Keeping track of every node in the graph
+#     solutionPath = [] # Will contain the solution path
+#     while len(frontier) > 0:
+#         currNode = (frontier.pop(0))[0] # Visit the node having top priority
+#         frontierSet.remove(currNode.State) # Same as above (remove from frontier)
+#         if currNode.State == goalState: # Goal Test stage
+#             pathTrail.append(currNode) # Add goal node to current path
+#             pathReconstruction(initialState, goalState, pathTrail, solutionPath) # Reconstruct solution path using trail
+#             return solutionPath
+#         pathTrail.append(currNode) # Add to explored
+#         if currNode not in everyNode: # Just to avoid repeated nodes
+#             everyNode.append(currNode)
+#         exploredSet.append(currNode.State) # Add to explored
+#         children = expand3(currNode) # Get the children of the current node
+#         for child in children:
+#             if child.State in frontierSet: #Check if we need to update the path cost of any node (a shorter path was found) and hence parent
+#                 if reevalPathcost(deepcopy(everyNode), initialState, deepcopy(child)) == True:
+#                     updateParent(frontier,deepcopy(child))
+#             if child.State not in frontierSet and child.State not in exploredSet:
+#                 pathCost = 0
+#                 pathTrail.append(child)
+#                 if child not in everyNode:
+#                     everyNode.append(child)
+#                 pathCost = calcPathcost(initialState,child.State,deepcopy(pathTrail),pathCost) # Get path cost to current node using parent pointers - IMP to use this approach since path cost may change during the search
+#                 f = calcCost(child.State,goalState) + pathCost # f = g + h  -> A* Algorithm
+#                 # f = pathCost # Dijkstra's Algorithm
+#                 # f = calcCost(child.State,goalState) # GBFS
+#                 frontier.append(Frontier(nodeObj=child,cost=f))
+#                 frontierSet.append(child.State)
+#         frontier = sorted(frontier, key=lambda cost: cost[1])  # Sorting according to f cost
+#     return "Fail"
+
+
+y = Resolution(deepcopy(RULES))
+#print(y)
+thesis = ['NOT R','NOT Q']
+print(y)
+print(clauseCost(y,thesis))
+
+
