@@ -66,6 +66,7 @@ def initialize_street_information():
                 	end=Coordinate(x=int(entry[3]), y=int(entry[4]))))
     return street_info
 
+
 def extract_coordinates():
 	street_info = initialize_street_information()
 	coordinate_set = set()
@@ -73,6 +74,7 @@ def extract_coordinates():
 		coordinate_set.add(i.start)
 		coordinate_set.add(i.end)
 	return coordinate_set
+
 
 def print_directions(explored, end):
     street_info = initialize_street_information()
@@ -101,6 +103,7 @@ def readPaths(filename):
                 Paths.append(line.replace("\n", ""))
     return Paths
 
+
 def extract_coordinates():
     street_info = initialize_street_information()
     coordinate_set = set()
@@ -109,10 +112,6 @@ def extract_coordinates():
         coordinate_set.add(i.end)
     return coordinate_set
 
-KB = readPaths('KB2.txt')
-print(KB)
-
-negsymbol = 'NOT'
 
 def parseKB(kbList):
     for i in range(0, len(kbList)):
@@ -130,6 +129,7 @@ def parseKB(kbList):
 
     return kbList
 
+
 def negation(splittedEntry):
     if ((len(splittedEntry) - 1) % 2 == 0):
         final = ''
@@ -145,6 +145,7 @@ def genResolution(kbList,negSymbol,toProve):
     kbList.append(toProve)
     return kbList
 
+
 def expDistribution(kbList):
     for i in range(0,len(kbList)):
         if(len(kbList[i][1])>1):
@@ -159,16 +160,12 @@ def expDistribution(kbList):
     return kbList
 
 
-
-def expandNode(kbList):
-    edges = []
-    return edges
-
 def negateList(posList):
     negList = []
     for i in posList:
         negList.append(negation([i]))
     return negList
+
 
 def removeRNOT(symbol): # Removes Redundant NOT symbols
     condensed = symbol.split("NOT ")
@@ -177,11 +174,13 @@ def removeRNOT(symbol): # Removes Redundant NOT symbols
     else:
         return condensed[-1]
 
+
 def removeRNOTlist(List):
     notList = []
     for i in range(0,len(List)):
         notList.append(removeRNOT(List[i]))
     return notList
+
 
 def negateKB(KBlist):
     negatedList = []
@@ -203,25 +202,6 @@ def simplifyKB(KB):
     return simpleKB
 
 
-KB = parseKB(KB)
-print(KB)
-# KB = expDistribution(KB)
-# KB = resolutionAlgorithm(KB)
-print(KB)
-
-
-testList1 = ['bu','NOT fo','te']
-# negateList(KB)
-simpleKB = simplifyKB(KB)
-checker = 'NOT NOT NOT NOT NOT fo'
-print(simpleKB)
-testList2 = ['bu','NOT fo']
-#commons = set(testList1).intersection(testList2)
-#print(negateList([testList1]))
-
-# negKB = negateKB(deepcopy(simpleKB))
-# print(negKB)
-
 def resolvePair(Ci,Cj):
     Ci_new = Ci
     Cj_new = Cj
@@ -240,38 +220,49 @@ def resolvePair(Ci,Cj):
     return list(set(resolvedClause)) # Removing duplicates
 
 
-# Preliminary Code for Resolution Algorithm - Finding the common pairwise elements using intersection
-# Note that some sets are the same but inverted : Comparing set 2 and 5 is like comparing set 5 and 2 - room for optimization in that regard
-# For resolution: we want to choose the set which contains the highest number of elements and then remove those two items from our original KB list
-
-
-RULES = simpleKB
-toProve = ['NOT R']
-RULES.append(toProve)
-
 def Resolution(rules):
     newClauses = []
-    for i in range(0,len(rules)):
-        for j in range(0,len(rules)):
+    for i in range(0, len(rules)):
+        for j in range(0, len(rules)):
             if i < j:
                 Clause1 = deepcopy(rules[i])
                 Clause2 = deepcopy(rules[j])
-                resolved = resolvePair(Clause1,Clause2)
+                resolved = resolvePair(Clause1, Clause2)
                 if resolved != False and resolved not in newClauses:
                     newClauses.append(resolved)
     return newClauses
 
 
-def matchNegThesis(clause,goal):
-    return len(goal)-len(set(clause).intersection(goal))
+def matchNegThesis(clause, goal):
+    return len(goal) - len(set(clause).intersection(goal))
 
-def clauseCost(resolvedClauses,thesis):
+
+def clauseCost(resolvedClauses, thesis):
     costList = []
     neg_thesis = removeRNOTlist(negateList(thesis))
     for i in resolvedClauses:
-        score = matchNegThesis(i,neg_thesis)
+        score = matchNegThesis(i, neg_thesis)
         costList.append(score)
     return costList
+
+
+def createNode(currKB,newClause,stepCost):
+    parentState = currKB
+    childState = deepcopy(currKB)
+    childState.append(newClause)
+    childNode = Node(Parent=currKB,State=childState,stepCost=stepCost)
+    return childNode
+
+
+def expand(currKB):
+    Children = []
+    stepCost = 1
+    possClauses = Resolution(deepcopy(currKB))
+    for i in possClauses:
+        child = createNode(deepcopy(currKB),i,stepCost)
+        Children.append(child)
+    return Children
+
 
 def goalTest(testList):
     for i in testList:
@@ -280,45 +271,28 @@ def goalTest(testList):
     return False
 
 
-# def GraphSearch3(initialState, goalState):
-#     frontier = [] # Will contain the nodes in the frontier
-#     frontierSet = [] # Will contain the current state in the frontier
-#     initNode = Node(Parent=initialState, State=initialState, stepCost=0) # Initial State - Points to itself - Parent is itself
-#     frontier.append(Frontier(nodeObj=initNode, cost=0)) # This frontier holds a list of nodes
-#     frontierSet.append(initialState) # This is the same as the frontier but just holds a list of states (makes it easier in IF statements to compare states and not nodes)
-#     exploredSet =[] # Will contain a list of visited states (makes it easier in IF statements to compare states and not nodes)
-#     pathTrail = []  # Contains a list of visited NODES (used to retrieve the solution path)
-#     everyNode = [] # Keeping track of every node in the graph
-#     solutionPath = [] # Will contain the solution path
-#     while len(frontier) > 0:
-#         currNode = (frontier.pop(0))[0] # Visit the node having top priority
-#         frontierSet.remove(currNode.State) # Same as above (remove from frontier)
-#         if currNode.State == goalState: # Goal Test stage
-#             pathTrail.append(currNode) # Add goal node to current path
-#             pathReconstruction(initialState, goalState, pathTrail, solutionPath) # Reconstruct solution path using trail
-#             return solutionPath
-#         pathTrail.append(currNode) # Add to explored
-#         if currNode not in everyNode: # Just to avoid repeated nodes
-#             everyNode.append(currNode)
-#         exploredSet.append(currNode.State) # Add to explored
-#         children = expand3(currNode) # Get the children of the current node
-#         for child in children:
-#             if child.State in frontierSet: #Check if we need to update the path cost of any node (a shorter path was found) and hence parent
-#                 if reevalPathcost(deepcopy(everyNode), initialState, deepcopy(child)) == True:
-#                     updateParent(frontier,deepcopy(child))
-#             if child.State not in frontierSet and child.State not in exploredSet:
-#                 pathCost = 0
-#                 pathTrail.append(child)
-#                 if child not in everyNode:
-#                     everyNode.append(child)
-#                 pathCost = calcPathcost(initialState,child.State,deepcopy(pathTrail),pathCost) # Get path cost to current node using parent pointers - IMP to use this approach since path cost may change during the search
-#                 f = calcCost(child.State,goalState) + pathCost # f = g + h  -> A* Algorithm
-#                 # f = pathCost # Dijkstra's Algorithm
-#                 # f = calcCost(child.State,goalState) # GBFS
-#                 frontier.append(Frontier(nodeObj=child,cost=f))
-#                 frontierSet.append(child.State)
-#         frontier = sorted(frontier, key=lambda cost: cost[1])  # Sorting according to f cost
-#     return "Fail"
+KB = readPaths('KB2.txt')
+negsymbol = 'NOT'
+
+
+KB = parseKB(KB)
+print(KB)
+# KB = expDistribution(KB)
+# KB = resolutionAlgorithm(KB)
+print(KB)
+
+
+testList1 = ['bu','NOT fo','te']
+# negateList(KB)
+simpleKB = simplifyKB(KB)
+checker = 'NOT NOT NOT NOT NOT fo'
+print(simpleKB)
+testList2 = ['bu','NOT fo']
+
+
+RULES = simpleKB
+toProve = ['NOT R']
+RULES.append(toProve)
 
 
 y = Resolution(deepcopy(RULES))
@@ -326,5 +300,8 @@ y = Resolution(deepcopy(RULES))
 thesis = ['NOT R','NOT Q']
 print(y)
 print(clauseCost(y,thesis))
+testing = expand(deepcopy(RULES))
+for i in range(0,len(testing)):
+    print('Child ',i,': ',testing[i])
 
 
