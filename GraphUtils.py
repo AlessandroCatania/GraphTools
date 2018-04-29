@@ -236,6 +236,8 @@ def Resolution(rules):
 def matchNegThesis(clause, goal):
     return len(goal) - len(set(clause).intersection(goal))
 
+def heuristicCost(clause):
+    return len(clause)
 
 def clauseCost(resolvedClauses, thesis):
     costList = []
@@ -249,7 +251,8 @@ def clauseCost(resolvedClauses, thesis):
 def createNode(currKB,newClause,stepCost):
     parentState = currKB
     childState = deepcopy(currKB)
-    childState.append(newClause)
+    if newClause not  in childState:
+        childState.append(newClause)
     childNode = Node(Parent=currKB,State=childState,stepCost=stepCost)
     return childNode
 
@@ -260,18 +263,19 @@ def expand(currKB):
     possClauses = Resolution(deepcopy(currKB))
     for i in possClauses:
         child = createNode(deepcopy(currKB),i,stepCost)
-        Children.append(child)
+        if child.Parent != child.State: # No self loops
+            Children.append(child)
     return Children
 
 
-def goalTest(testList):
+def goalTest(testList,goal):
     for i in testList:
-        if i == []:
+        if i == goal:
             return True
     return False
 
 
-KB = readPaths('KB2.txt')
+KB = readPaths('KB.txt')
 negsymbol = 'NOT'
 
 
@@ -279,29 +283,129 @@ KB = parseKB(KB)
 print(KB)
 # KB = expDistribution(KB)
 # KB = resolutionAlgorithm(KB)
-print(KB)
 
-
-testList1 = ['bu','NOT fo','te']
 # negateList(KB)
 simpleKB = simplifyKB(KB)
-checker = 'NOT NOT NOT NOT NOT fo'
 print(simpleKB)
-testList2 = ['bu','NOT fo']
 
 
+thesis = ['to','bu','e','co']
+toProve = negateList(deepcopy(thesis))
 RULES = simpleKB
-toProve = ['NOT R']
+#toProve = ['NOT fo']
 RULES.append(toProve)
 
 
 y = Resolution(deepcopy(RULES))
 #print(y)
-thesis = ['NOT R','NOT Q']
-print(y)
-print(clauseCost(y,thesis))
-testing = expand(deepcopy(RULES))
-for i in range(0,len(testing)):
-    print('Child ',i,': ',testing[i])
+
+testing1 = expand(deepcopy(RULES))[0].State
+testing = expand(testing1)
 
 
+initialState = RULES
+goalState = []
+
+def pathReconstruction(initState,currState,List,solutionPath):
+    for node in List:
+        if node.State == currState:
+            currNode = node
+            parentState = node.Parent
+    if currState == initState:
+        solutionPath.reverse()
+        return
+    solutionPath.append(currNode)
+    pathReconstruction(initState,currNode.Parent,List,solutionPath)
+
+
+def updateParent(List,currentNode):
+    for node in List:
+        nodeOb = node[0]
+        if nodeOb.State == currentNode.State:
+            nodeOb.Parent = currentNode.Parent
+            nodeOb.stepCost = calcCost(nodeOb.Parent,currentNode.State)
+    return
+
+def reevalPathcost(traversedNodes,initialState,currChild):
+    prevPathCost = 0
+    newPathCost = 0
+    nodes = deepcopy(traversedNodes)
+    prevPathCost = calcPathcost(initialState, currChild.State, deepcopy(nodes), prevPathCost)
+    newPathCost = calcPathcost(initialState, currChild.Parent, deepcopy(nodes), newPathCost) + currChild.stepCost
+    if prevPathCost > newPathCost:
+        return True
+    else:
+        return False
+        frontierSet.remove(child.State)
+
+
+def calcPathcost(initState,currState,List,pathCost):
+    tempList = List
+    if currState == initState or len(tempList) == 0:
+        return 0
+    for node in tempList:
+        if node.State == currState:
+            pathCost = node.stepCost
+            currNode = node
+            parentState = node.Parent
+            tempList.remove(currNode)
+    return pathCost + calcPathcost(initState, parentState, tempList, pathCost)
+
+
+def GraphSearch3(initialState, goalState):
+    frontier = [] # Will contain the nodes in the frontier
+    frontierSet = [] # Will contain the current state in the frontier
+    initNode = Node(Parent=initialState, State=initialState, stepCost=0) # Initial State - Points to itself - Parent is itself
+    frontier.append(Frontier(nodeObj=initNode, cost=0)) # This frontier holds a list of nodes
+    frontierSet.append(initialState) # This is the same as the frontier but just holds a list of states (makes it easier in IF statements to compare states and not nodes)
+    exploredSet =[] # Will contain a list of visited states (makes it easier in IF statements to compare states and not nodes)
+    pathTrail = []  # Contains a list of visited NODES (used to retrieve the solution path)
+    everyNode = [] # Keeping track of every node in the graph
+    solutionPath = [] # Will contain the solution path
+    pathCost = 0
+    while len(frontier) > 0:
+        currNode = (frontier.pop(0))[0] # Visit the node having top priority
+        pathCost = pathCost + currNode.stepCost
+        frontierSet.remove(currNode.State) # Same as above (remove from frontier)
+        if goalTest(currNode.State,goalState): # Goal Test stage
+            pathTrail.append(currNode) # Add goal node to current path
+            pathReconstruction(initialState, currNode.State, pathTrail, solutionPath) # Reconstruct solution path using trail
+            print('GENERATED STATES: ',len(pathTrail))
+            return solutionPath
+        if currNode not in pathTrail:
+            pathTrail.append(currNode) # Add to explored
+        if currNode not in everyNode: # Just to avoid repeated nodes
+            everyNode.append(currNode)
+        if currNode.State not in exploredSet:
+            exploredSet.append(currNode.State) # Add to explored
+        children = []  # Reset children
+        children = expand(currNode.State) # Get the children of the current node
+        for child in children:
+            if child.State in frontierSet: #Check if we need to update the path cost of any node (a shorter path was found) and hence parent
+                if reevalPathcost(deepcopy(everyNode), initialState, deepcopy(child)) == True:
+                    updateParent(frontier,deepcopy(child))
+            if child.State not in frontierSet and child.State not in exploredSet:
+                pathCost = 0
+                pathTrail.append(child)
+                if child not in everyNode:
+                    everyNode.append(child)
+                pathCost = calcPathcost(initialState, child.State, deepcopy(pathTrail), pathCost)
+                addedClause = child.State[-1]
+                h = matchNegThesis(deepcopy(addedClause),removeRNOTlist(negateList(deepcopy(thesis))))
+                h = heuristicCost(addedClause)
+                # pathCost = calcPathcost(initialState,child.State,deepcopy(pathTrail),pathCost) # Get path cost to current node using parent pointers - IMP to use this approach since path cost may change during the search
+                f = pathCost + h# f = g + h  -> A* Algorithm
+                # f = pathCost # Dijkstra's Algorithm
+                # f = calcCost(child.State,goalState) # GBFS
+                frontier.append(Frontier(nodeObj=child,cost=f))
+                frontierSet.append(child.State)
+        frontier = sorted(frontier, key=lambda cost: cost[1])  # Sorting according to f cost
+    return "FAIL!"
+
+SOLUTION = GraphSearch3(deepcopy(initialState),deepcopy(goalState))
+if (SOLUTION != 'FAIL!'):
+    print('Step ',1,': ',SOLUTION[0].State)
+    for i in range(0,len(SOLUTION)):
+        print('Step ',i+2,': ',SOLUTION[i].State)
+else:
+    print(SOLUTION)
